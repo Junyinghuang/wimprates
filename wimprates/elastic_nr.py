@@ -183,6 +183,15 @@ def vmin_elastic(erec, mw, material):
     """
     return np.sqrt(mn(material) * erec / (2 * mu_nucleus(mw, material) ** 2))
 
+@export
+def vmin_inelastic(erec, mw, material, delta):
+    """Minimum WIMP velocity that can produce a recoil of energy erec
+    :param erec: recoil energy
+    :param mw: Wimp mass
+    :param material: name of the detection material (default is 'Xe')
+    """
+    return ((mn(material) * erec)/mu_nucleus(mw, material) + delta)/(np.sqrt(2 * mn(material) * erec))
+
 
 @export
 @wr.vectorize_first
@@ -214,6 +223,50 @@ def rate_elastic(erec, mw, sigma_nucleon, interaction='SI',
 
     halo_model = wr.StandardHaloModel() if halo_model is None else halo_model
     v_min = vmin_elastic(erec, mw, material)
+
+    if v_min >= wr.v_max(t, halo_model.v_esc):
+        return 0
+
+    def integrand(v):
+        return (sigma_erec(erec, v, mw, sigma_nucleon,
+                           interaction, m_med, material=material) * v
+                * halo_model.velocity_dist(v, t))
+
+    return halo_model.rho_dm / mw * (1 / mn(material)) * quad(
+        integrand,
+        v_min, wr.v_max(t, halo_model.v_esc),
+        **kwargs)[0]
+
+@export
+@wr.vectorize_first
+def rate_inelastic(erec, mw, sigma_nucleon, interaction='SI',
+                 m_med=float('inf'), t=None, material='Xe',
+                 halo_model=None, delta=0, **kwargs):
+    """Differential rate per unit detector mass and recoil energy of
+    elastic WIMP scattering
+
+    :param erec: recoil energy
+    :param mw: WIMP mass
+    :param sigma_nucleon: WIMP/nucleon cross-section
+    :param interaction: string describing DM-nucleus interaction,
+    see sigma_erec for options
+    :param m_med: Mediator mass. If not given, assumed very heavy.
+    :param t: A J2000.0 timestamp.
+    If not given, conservative velocity distribution is used.
+    :param halo_model: class (default to standard halo model)
+    containing velocity distribution
+    :param progress_bar: if True, show a progress bar during evaluation
+    (if erec is an array)
+    :param material: name of the detection material (default is 'Xe')
+
+    Further kwargs are passed to scipy.integrate.quad numeric integrator
+    (e.g. error tolerance).
+
+    Analytic expressions are known for this rate, but they are not used here.
+    """
+
+    halo_model = wr.StandardHaloModel() if halo_model is None else halo_model
+    v_min = vmin_inelastic(erec, mw, material, delta * nu.keV)
 
     if v_min >= wr.v_max(t, halo_model.v_esc):
         return 0

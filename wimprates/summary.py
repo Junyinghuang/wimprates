@@ -46,7 +46,8 @@ def rate_wimp(es, mw, sigma_nucleon, interaction='SI',
     halo_model = wr.StandardHaloModel() if halo_model is None else halo_model
     dmechs = dict(elastic_nr=wr.rate_elastic,
                   bremsstrahlung=wr.rate_bremsstrahlung,
-                  migdal=wr.rate_migdal)
+                  migdal=wr.rate_migdal,
+                  inelastic_nr=wr.rate_inelastic)
     if detection_mechanism not in dmechs:
         raise NotImplementedError(
             "Unsupported detection mechanism '%s'" % detection_mechanism)
@@ -57,7 +58,7 @@ def rate_wimp(es, mw, sigma_nucleon, interaction='SI',
 
 @export
 def rate_wimp_std(es, mw, sigma_nucleon, m_med=float('inf'),
-                  t=None, halo_model=None, **kwargs):
+                  t=None, halo_model=None, detection_mechanism='elastic_nr', **kwargs):
     """Differential rate per (ton year keV) of WIMP-nucleus scattering.
     :param es: Recoil energies in keV
     :param mw: WIMP mass in GeV/c^2
@@ -76,5 +77,5 @@ def rate_wimp_std(es, mw, sigma_nucleon, m_med=float('inf'),
                       mw=mw * nu.GeV/nu.c0**2,
                       sigma_nucleon=sigma_nucleon * nu.cm**2,
                       m_med=m_med * nu.GeV/nu.c0**2,
-                      t=t, halo_model=halo_model, **kwargs)
+                      t=t, halo_model=halo_model, detection_mechanism=detection_mechanism, **kwargs)
             * (nu.keV * (1000 * nu.kg) * nu.year))

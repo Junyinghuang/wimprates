@@ -19,6 +19,7 @@ _HALO_DEFAULTS = dict(
     v_orbit = 29.8,  # km/s
     v_pec = (11.1, 12.2, 7.3),  # km/s
     v_0 = 238,  # km/s
+    #v_0 = 220,  # km/s
 )
 
 # J2000.0 epoch conversion (converts datetime to days since epoch)
@@ -118,6 +119,7 @@ def v_earth(t=None, v_0=None):
         # This day (Feb 29 2000) gives ~ the annual average speed
         t = 59.37
     return np.sum(earth_velocity(t, v_0=v_0) ** 2) ** 0.5
+    #return 232 * nu.km / nu.s  # Approximate average value
 
 
 @export
@@ -135,7 +137,7 @@ def v_max(t=None, v_esc=None, v_0=None):
 
 
 @export
-def observed_speed_dist(v, t=None, v_0=None, v_esc=None):
+def observed_speed_dist(v, t=None, v_0=None, v_esc=None, v_earth_manual=None):
     """Observed distribution of dark matter particle speeds on earth
     under the standard halo model.
 
@@ -150,7 +152,7 @@ def observed_speed_dist(v, t=None, v_0=None, v_esc=None):
     """
     v_0 = _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
     v_esc = _HALO_DEFAULTS['v_esc'] * nu.km/nu.s if v_esc is None else v_esc
-    v_earth_t = v_earth(t, v_0=v_0)
+    v_earth_t = v_earth(t, v_0=v_0) if v_earth_manual is None else v_earth_manual
 
     # Normalization constant, see Lewin&Smith appendix 1a
     _w = v_esc/v_0
@@ -196,13 +198,18 @@ class StandardHaloModel:
         :param v_0: Local standard of rest velocity
     """
 
-    def __init__(self, v_0=None, v_esc=None, rho_dm=None):
-        self.v_0 = _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
-        self.v_esc = _HALO_DEFAULTS['v_esc'] * nu.km/nu.s if v_esc is None else v_esc
-        self.rho_dm = _HALO_DEFAULTS['rho_dm'] * nu.GeV/nu.c0**2 / nu.cm**3 if rho_dm is None else rho_dm
+    def __init__(self, v_0=None, v_esc=None, rho_dm=None, v_lab=None):
+        self.v_0 = _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0 * nu.km/nu.s
+        self.v_esc = _HALO_DEFAULTS['v_esc'] * nu.km/nu.s if v_esc is None else v_esc * nu.km/nu.s
+        self.rho_dm = _HALO_DEFAULTS['rho_dm'] * nu.GeV/nu.c0**2 / nu.cm**3 if rho_dm is None else rho_dm * nu.GeV/nu.c0**2 / nu.cm**3
+
+        if v_lab is None:
+            self.v_lab = None
+        else:
+            self.v_lab = v_lab * nu.km / nu.s
 
     def velocity_dist(self, v, t):
         # in units of per velocity,
         # v is in units of velocity
-        return observed_speed_dist(v, t, v_0=self.v_0, v_esc=self.v_esc)
+        return observed_speed_dist(v, t, v_0=self.v_0, v_esc=self.v_esc, v_earth_manual=self.v_lab)
 
